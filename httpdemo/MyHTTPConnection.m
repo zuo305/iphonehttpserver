@@ -10,6 +10,8 @@
 #import "HTTPDynamicFileResponse.h"
 #import "HTTPFileResponse.h"
 
+#import "ZipArchive.h"
+
 // Log levels : off, error, warn, info, verbose
 // Other flags: trace
 static const int httpLogLevel = HTTP_LOG_LEVEL_VERBOSE; // | HTTP_LOG_FLAG_TRACE;
@@ -20,6 +22,9 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_VERBOSE; // | HTTP_LOG_FLAG_TRACE
  **/
 
 @implementation MyHTTPConnection
+{
+    NSString *uploadFilePath;
+}
 
 - (BOOL)supportsMethod:(NSString *)method atPath:(NSString *)path
 {
@@ -171,6 +176,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_VERBOSE; // | HTTP_LOG_FLAG_TRACE
 		if(![[NSFileManager defaultManager] createFileAtPath:filePath contents:nil attributes:nil]) {
 			HTTPLogError(@"Could not create file at path: %@", filePath);
 		}
+        uploadFilePath=filePath;
 		storeFile = [NSFileHandle fileHandleForWritingAtPath:filePath];
 		[uploadedFiles addObject: [NSString stringWithFormat:@"/upload/%@", filename]];
     }
@@ -190,6 +196,29 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_VERBOSE; // | HTTP_LOG_FLAG_TRACE
 	// as the file part is over, we close the file.
 	[storeFile closeFile];
 	storeFile = nil;
+    
+    if([[NSFileManager defaultManager] fileExistsAtPath:uploadFilePath])
+    {
+//        NSData *data = [[NSFileManager defaultManager] contentsAtPath:uploadFilePath];
+        ZipArchive* zip = [[ZipArchive alloc] init];
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *documentpath = ([paths count] > 0) ? [paths objectAtIndex:0] : nil;
+        
+        NSString* l_zipfile = uploadFilePath;//[documentpath stringByAppendingString:@"/test.zip"] ;
+        NSString* unzipto = [documentpath stringByAppendingString:@"/test"] ;
+        if( [zip UnzipOpenFile:l_zipfile] )
+        {
+            BOOL ret = [zip UnzipFileTo:unzipto overWrite:YES];
+            if( NO==ret )
+            {
+            }    
+            [zip UnzipCloseFile];    
+        }    
+    }
+        else
+    {
+        NSLog(@"File not exits");
+    }
 }
 
 - (void) processPreambleData:(NSData*) data 
